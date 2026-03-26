@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Playbook Creator</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar left-panel">
+      <div class="brand-card">
+        <div class="brand-kicker">Football Tool</div>
+        <h1>Playbook Creator</h1>
+        <p>Fast, clean football diagrams built for coaches — not generic drawing software.</p>
+      </div>
+
+      <section class="panel-section">
+        <div class="section-title">Tools</div>
+        <div class="tool-grid">
+          <button class="tool-btn active" data-tool="draw">Route Pen</button>
+          <button class="tool-btn" data-tool="erase">Eraser</button>
+          <button class="tool-btn" data-tool="select">Select</button>
+          <button class="tool-btn" data-tool="player">Player</button>
+          <button class="tool-btn" data-tool="ball">Ball</button>
+          <button class="tool-btn" data-tool="text">Text</button>
+        </div>
+      </section>
+
+      <section class="panel-section">
+        <div class="section-title">Strokes</div>
+        <label class="control">
+          <span>Stroke Style</span>
+          <select id="strokeStyle">
+            <option value="solid">Solid</option>
+            <option value="dash">Dashed</option>
+            <option value="dot">Dotted</option>
+          </select>
+        </label>
+        <label class="control">
+          <span>Route Weight</span>
+          <input id="lineWidth" type="range" min="2" max="12" value="4" />
+        </label>
+        <label class="control toggle">
+          <span>Auto-smooth</span>
+          <input id="autoSmooth" type="checkbox" checked />
+        </label>
+        <label class="control toggle">
+          <span>Snap to grid</span>
+          <input id="snapToGrid" type="checkbox" />
+        </label>
+      </section>
+
+      <section class="panel-section">
+        <div class="section-title">Quick Actions</div>
+        <div class="stack-actions">
+          <button id="undoBtn">Undo</button>
+          <button id="redoBtn">Redo</button>
+          <button id="clearBtn" class="danger">Clear Board</button>
+        </div>
+      </section>
+    </aside>
+
+    <main class="workspace">
+      <header class="topbar">
+        <div>
+          <div class="topbar-label">Canvas</div>
+          <h2>Formation Board</h2>
+        </div>
+        <div class="topbar-actions">
+          <button id="toggleFieldBtn">Toggle Field</button>
+          <button id="downloadBtn">Export PNG</button>
+        </div>
+      </header>
+
+      <section class="canvas-wrap">
+        <canvas id="playCanvas" width="1400" height="850" aria-label="Football play drawing canvas"></canvas>
+      </section>
+    </main>
+
+    <aside class="sidebar right-panel">
+      <section class="panel-section">
+        <div class="section-title">Football Presets</div>
+        <div class="preset-grid">
+          <button class="preset-btn" data-preset="offense">Offense</button>
+          <button class="preset-btn" data-preset="defense">Defense</button>
+          <button class="preset-btn" data-preset="empty">Blank</button>
+        </div>
+      </section>
+
+      <section class="panel-section">
+        <div class="section-title">What makes this better</div>
+        <ul class="feature-list">
+          <li>Football-first icons and language</li>
+          <li>One-screen workflow with no clutter</li>
+          <li>Smooth route drawing for finger, mouse, or stylus</li>
+          <li>GitHub Pages friendly — no backend required</li>
+        </ul>
+      </section>
+
+      <section class="panel-section">
+        <div class="section-title">Roadmap</div>
+        <ol class="roadmap">
+          <li>Elite drawing engine</li>
+          <li>Drag-and-drop formations</li>
+          <li>Reusable route library</li>
+          <li>Call sheet and install builder</li>
+        </ol>
+      </section>
+    </aside>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
