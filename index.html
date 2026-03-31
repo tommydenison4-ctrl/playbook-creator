@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Playbook Creator V44</title>
+  <title>Playbook Creator V50</title>
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
@@ -12,8 +12,8 @@
     <div class="brand">
       <div class="badge">PB</div>
       <div>
-        <div class="title">Playbook Creator V44</div>
-        <div class="subtitle">V40 drawing + curved block restored.</div>
+        <div class="title">Playbook Creator V50</div>
+        <div class="subtitle">Save/load rebuilt and visible.</div>
       </div>
     </div>
 
@@ -24,17 +24,35 @@
     </div>
 
     <div class="actions">
-      <div class="toolrow">
-        <button class="tool active" data-tool="route" title="Straight route">↗</button>
-        <button class="tool" data-tool="motion" title="Motion">≈</button>
-        <button class="tool" data-tool="option" title="Option">⤴</button>
-        <button class="tool" data-tool="pull" title="Pull">⇢</button>
-        <button class="tool" data-tool="block" title="Block">╱</button>
-        <button class="tool" data-tool="text" title="Text">T</button>
-        <button class="tool" data-tool="cursor" title="Cursor / Drag">↖</button>
-        <button class="tool" data-tool="anchors" title="Edit route anchors">✎</button>
+      <div class="toolrow toolrow-grid">
+        <div class="toolpair">
+          <button class="tool active" data-tool="route" title="Straight route">↗</button>
+          <label class="color"><input id="routeColor" type="color" value="#111111"></label>
+        </div>
+        <div class="toolpair">
+          <button class="tool" data-tool="motion" title="Motion">≈</button>
+          <label class="color"><input id="motionColor" type="color" value="#2952ff"></label>
+        </div>
+        <div class="toolpair">
+          <button class="tool" data-tool="option" title="Option">⤴</button>
+          <label class="color"><input id="optionColor" type="color" value="#16a34a"></label>
+        </div>
+        <div class="toolpair">
+          <button class="tool" data-tool="pull" title="Pull">⇢</button>
+          <label class="color"><input id="pullColor" type="color" value="#dc2626"></label>
+        </div>
+        <div class="toolpair">
+          <button class="tool" data-tool="block" title="Block">╱</button>
+          <label class="color"><input id="blockColor" type="color" value="#111111"></label>
+        </div>
+        <div class="toolpair">
+          <button class="tool" data-tool="text" title="Text">T</button>
+          <label class="color"><input id="textColor" type="color" value="#7c3aed"></label>
+        </div>
       </div>
       <div class="toolrow">
+        <button class="tool" data-tool="cursor" title="Cursor / Drag">↖</button>
+        <button class="tool" data-tool="anchors" title="Edit route anchors">✎</button>
         <button class="mode active" id="hybridBtn">Hybrid</button>
         <button class="mode" id="freehandBtn">Freehand</button>
         <button class="small" id="saveFormationBtn">F</button>
@@ -43,11 +61,6 @@
         <button class="small" id="pdfBtn">PDF</button>
         <button class="small" id="undoBtn">↺</button>
         <button class="small danger" id="deleteBtn">⌫</button>
-        <label class="color"><input id="routeColor" type="color" value="#111111"></label>
-        <label class="color"><input id="motionColor" type="color" value="#2952ff"></label>
-        <label class="color"><input id="optionColor" type="color" value="#16a34a"></label>
-        <label class="color"><input id="pullColor" type="color" value="#dc2626"></label>
-        <label class="color"><input id="textColor" type="color" value="#7c3aed"></label>
       </div>
     </div>
   </header>

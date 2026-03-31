@@ -81,7 +81,7 @@ function colors(){
     motion: document.getElementById('motionColor').value,
     option: document.getElementById('optionColor').value,
     pull: document.getElementById('pullColor').value,
-    block: document.getElementById('routeColor').value,
+    block: document.getElementById('blockColor').value,
     text: document.getElementById('textColor').value
   };
 }
@@ -103,6 +103,17 @@ function syncPrintLabels(){
   document.getElementById('printTags').textContent = state.tags.length ? state.tags.join(' • ') : 'Tags';
 }
 ['formationName','motionTag','playName'].forEach(id => document.getElementById(id).addEventListener('input', syncPrintLabels));
+
+document.getElementById('formationName').addEventListener('input', ()=>{
+  const key = (document.getElementById('formationName').value || '').trim().toLowerCase();
+  const store = getStore();
+  document.getElementById('formationStatus').textContent = key && store.formations[key] ? 'Saved found' : 'New';
+});
+document.getElementById('playName').addEventListener('input', ()=>{
+  const key = (document.getElementById('playName').value || '').trim().toLowerCase();
+  const store = getStore();
+  document.getElementById('playStatus').textContent = key && store.plays[key] ? 'Saved found' : 'New';
+});
 
 function pushHistory(){
   state.history.push(JSON.stringify({
@@ -345,6 +356,8 @@ function drawOne(defs, draw, preview=false){
   if(draw.mode !== 'motion' && draw.mode !== 'block') p.setAttribute('marker-end', `url(#arrow-${draw.mode})`);
   if(preview) p.classList.add('preview');
   if(state.selectedId === draw.id) p.classList.add('routeSelected');
+  p.setAttribute('data-route-id', draw.id);
+  p.style.cursor = state.tool === 'cursor' ? 'grab' : 'pointer';
   g.appendChild(p);
 
   if(draw.mode === 'block'){
@@ -357,6 +370,8 @@ function drawOne(defs, draw, preview=false){
     cap.setAttribute('d', `M ${last.x-px} ${last.y-py} L ${last.x+px} ${last.y+py}`);
     cap.setAttribute('class','blockCap' + (preview ? ' preview' : ''));
     cap.setAttribute('stroke', draw.color);
+    cap.setAttribute('data-route-id', draw.id);
+    cap.style.cursor = state.tool === 'cursor' ? 'grab' : 'pointer';
     g.appendChild(cap);
   }
   if(draw.mode === 'option'){
@@ -377,11 +392,8 @@ function drawOne(defs, draw, preview=false){
     const hit = document.createElementNS('http://www.w3.org/2000/svg','path');
     hit.setAttribute('d', smoothPath(draw.points, draw.mode));
     hit.setAttribute('class','routeHit');
-    hit.addEventListener('pointerdown', e => {
-      e.stopPropagation();
-      state.selectedId = draw.id;
-      render();
-    });
+    hit.setAttribute('data-route-id', draw.id);
+    hit.style.cursor = state.tool === 'cursor' ? 'grab' : 'pointer';
     g.appendChild(hit);
   }
 
@@ -449,7 +461,7 @@ function renderTags(){
 }
 function renderSearchResults(query=''){
   const q = query.trim().toLowerCase();
-  const plays = JSON.parse(localStorage.getItem('pb_v31_plays') || '{}');
+  const plays = getStore().plays || {};
   searchResults.innerHTML = '';
   const matches = Object.values(plays).filter(play => {
     if(!q) return false;
@@ -515,11 +527,29 @@ function setAssignmentValues(items=[], countOverride=null){
 }
 rowsSelect.addEventListener('change', buildAssignments);
 
+
+const STORAGE_KEY = 'pb_v50_store';
+
+function getStore(){
+  try{
+    return JSON.parse(localStorage.getItem(STORAGE_KEY) || '{"plays":{},"formations":{}}');
+  }catch(err){
+    return {plays:{}, formations:{}};
+  }
+}
+function setStore(store){
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(store));
+}
+function setNotice(msg){
+  const el = document.getElementById('saveNotice');
+  if(el) el.textContent = msg;
+}
+
 function payload(){
   return {
-    formationName: document.getElementById('formationName').value,
-    motionTag: document.getElementById('motionTag').value,
-    playName: document.getElementById('playName').value,
+    formationName: document.getElementById('formationName').value || '',
+    motionTag: document.getElementById('motionTag').value || '',
+    playName: document.getElementById('playName').value || '',
     rowsCount: Number(rowsSelect.value),
     assignments: getAssignmentValues(),
     colors: colors(),
@@ -530,21 +560,31 @@ function payload(){
   };
 }
 function saveFormation(){
-  const name = document.getElementById('formationName').value.trim();
-  if(!name) return alert('Add a formation name first.');
-  const formations = JSON.parse(localStorage.getItem('pb_v31_formations') || '{}');
-  formations[name.toLowerCase()] = { ...payload(), playName: '' };
-  localStorage.setItem('pb_v31_formations', JSON.stringify(formations));
+  const name = (document.getElementById('formationName').value || '').trim();
+  if(!name){
+    alert('Add a formation name first.');
+    return false;
+  }
+  const store = getStore();
+  store.formations[name.toLowerCase()] = { ...payload(), playName: '' };
+  setStore(store);
   document.getElementById('formationStatus').textContent = 'Saved';
+  setNotice(`Formation saved: ${name}`);
+  return true;
 }
 function savePlay(){
-  const name = document.getElementById('playName').value.trim();
-  if(!name) return alert('Add a play name first.');
-  const plays = JSON.parse(localStorage.getItem('pb_v31_plays') || '{}');
-  plays[name.toLowerCase()] = payload();
-  localStorage.setItem('pb_v31_plays', JSON.stringify(plays));
+  const name = (document.getElementById('playName').value || '').trim();
+  if(!name){
+    alert('Add a play name first.');
+    return false;
+  }
+  const store = getStore();
+  store.plays[name.toLowerCase()] = payload();
+  setStore(store);
   document.getElementById('playStatus').textContent = 'Saved';
   renderSearchResults(searchInput.value);
+  setNotice(`Play saved: ${name}`);
+  return true;
 }
 function applyData(data){
   document.getElementById('formationName').value = data.formationName || '';
@@ -555,6 +595,8 @@ function applyData(data){
     document.getElementById('motionColor').value = data.colors.motion || '#2952ff';
     document.getElementById('optionColor').value = data.colors.option || '#16a34a';
     document.getElementById('pullColor').value = data.colors.pull || '#dc2626';
+    const blockColor = document.getElementById('blockColor');
+    if(blockColor) blockColor.value = data.colors.block || data.colors.route || '#111111';
     document.getElementById('textColor').value = data.colors.text || '#7c3aed';
   }
   state.drawings = data.drawings || [];
@@ -568,31 +610,36 @@ function applyData(data){
   state.isDrawing = false;
   state.draftPoints = [];
   state.draggingObjectId = null;
+  state.draggingDrawId = null;
+  state.dragOffset = null;
+  state.dragSnapshot = null;
   state.draggingAnchor = null;
   clearPendingInsert();
   render();
 }
 function loadSaved(){
-  const playName = document.getElementById('playName').value.trim().toLowerCase();
-  const formationName = document.getElementById('formationName').value.trim().toLowerCase();
-  const plays = JSON.parse(localStorage.getItem('pb_v31_plays') || '{}');
-  const formations = JSON.parse(localStorage.getItem('pb_v31_formations') || '{}');
-  if(playName && plays[playName]){
-    applyData(plays[playName]);
+  const playName = (document.getElementById('playName').value || '').trim().toLowerCase();
+  const formationName = (document.getElementById('formationName').value || '').trim().toLowerCase();
+  const store = getStore();
+  if(playName && store.plays[playName]){
+    applyData(store.plays[playName]);
     document.getElementById('playStatus').textContent = 'Loaded';
-    hint.textContent = 'Loaded play';
-  } else if(formationName && formations[formationName]){
-    applyData(formations[formationName]);
-    document.getElementById('formationStatus').textContent = 'Loaded';
-    hint.textContent = 'Loaded formation';
-  } else {
-    alert('No saved play or formation with that name.');
+    setNotice(`Play loaded: ${playName}`);
+    return;
   }
+  if(formationName && store.formations[formationName]){
+    applyData(store.formations[formationName]);
+    document.getElementById('formationStatus').textContent = 'Loaded';
+    setNotice(`Formation loaded: ${formationName}`);
+    return;
+  }
+  alert('No saved play or formation with that name.');
 }
-document.getElementById('saveFormationBtn').addEventListener('click', ()=>{ saveFormation(); hint.textContent = 'Formation saved'; });
-document.getElementById('savePlayBtn').addEventListener('click', ()=>{ savePlay(); hint.textContent = 'Play saved'; });
+document.getElementById('saveFormationBtn').addEventListener('click', ()=>{ saveFormation(); });
+document.getElementById('savePlayBtn').addEventListener('click', ()=>{ savePlay(); });
 document.getElementById('loadBtn').addEventListener('click', loadSaved);
 document.getElementById('pdfBtn').addEventListener('click', ()=>window.print());
+
 
 tagInput.addEventListener('keydown', e => {
   if(e.key !== 'Enter') return;
@@ -732,6 +779,12 @@ window.addEventListener('pointerup', () => {
   if(state.draggingObjectId){
     state.draggingObjectId = null;
     state.dragOffset = null;
+    render();
+    return;
+  }
+  if(state.draggingDrawId){
+    state.draggingDrawId = null;
+    state.dragSnapshot = null;
     render();
     return;
   }
@@ -882,6 +935,36 @@ function renderDrawingsWithIds(){
 }
 renderDrawings = renderDrawingsWithIds;
 
+
+function findRouteTarget(el){
+  let node = el;
+  while(node){
+    if(node.getAttribute){
+      const id = node.getAttribute('data-route-id');
+      if(id) return { node, id };
+    }
+    node = node.parentNode;
+  }
+  return null;
+}
+
+svg.addEventListener('pointerdown', e => {
+  const found = findRouteTarget(e.target);
+  if(!found) return;
+  const routeId = found.id;
+  e.preventDefault();
+  e.stopPropagation();
+  state.selectedId = routeId;
+  if(state.tool === 'cursor'){
+    state.draggingDrawId = routeId;
+    state.dragSnapshot = getCanvasPct(e);
+    try{
+      if(found.node.setPointerCapture) found.node.setPointerCapture(e.pointerId);
+    }catch(err){}
+  }
+  render();
+});
+
 document.getElementById('deleteBtn').addEventListener('click', () => {
   if(!state.selectedId) return;
   pushHistory();
@@ -895,4 +978,5 @@ buildAssignments();
 render();
 syncPrintLabels();
 renderSearchResults('');
+setNotice('Ready');
 window.addEventListener('beforeprint', syncPrintLabels);
