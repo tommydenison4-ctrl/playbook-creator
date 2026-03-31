@@ -3,113 +3,141 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Playbook Creator</title>
+  <title>Playbook Creator V44</title>
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
-  <div class="app-shell">
-    <aside class="sidebar left-panel">
-      <div class="brand-card">
-        <div class="brand-kicker">Football Tool</div>
-        <h1>Playbook Creator</h1>
-        <p>Fast, clean football diagrams built for coaches — not generic drawing software.</p>
+<div class="app">
+  <header class="topbar">
+    <div class="brand">
+      <div class="badge">PB</div>
+      <div>
+        <div class="title">Playbook Creator V44</div>
+        <div class="subtitle">V40 drawing + curved block restored.</div>
+      </div>
+    </div>
+
+    <div class="meta">
+      <div class="row"><label>Formation</label><input id="formationName" placeholder="Formation name"><span id="formationStatus" class="pill">New</span></div>
+      <div class="row"><label>Motion</label><input id="motionTag" placeholder="Motion tag"></div>
+      <div class="row"><label>Play</label><input id="playName" placeholder="Play name"><span id="playStatus" class="pill">New</span></div>
+    </div>
+
+    <div class="actions">
+      <div class="toolrow">
+        <button class="tool active" data-tool="route" title="Straight route">↗</button>
+        <button class="tool" data-tool="motion" title="Motion">≈</button>
+        <button class="tool" data-tool="option" title="Option">⤴</button>
+        <button class="tool" data-tool="pull" title="Pull">⇢</button>
+        <button class="tool" data-tool="block" title="Block">╱</button>
+        <button class="tool" data-tool="text" title="Text">T</button>
+        <button class="tool" data-tool="cursor" title="Cursor / Drag">↖</button>
+        <button class="tool" data-tool="anchors" title="Edit route anchors">✎</button>
+      </div>
+      <div class="toolrow">
+        <button class="mode active" id="hybridBtn">Hybrid</button>
+        <button class="mode" id="freehandBtn">Freehand</button>
+        <button class="small" id="saveFormationBtn">F</button>
+        <button class="small" id="savePlayBtn">P</button>
+        <button class="small" id="loadBtn">L</button>
+        <button class="small" id="pdfBtn">PDF</button>
+        <button class="small" id="undoBtn">↺</button>
+        <button class="small danger" id="deleteBtn">⌫</button>
+        <label class="color"><input id="routeColor" type="color" value="#111111"></label>
+        <label class="color"><input id="motionColor" type="color" value="#2952ff"></label>
+        <label class="color"><input id="optionColor" type="color" value="#16a34a"></label>
+        <label class="color"><input id="pullColor" type="color" value="#dc2626"></label>
+        <label class="color"><input id="textColor" type="color" value="#7c3aed"></label>
+      </div>
+    </div>
+  </header>
+
+  <main class="main">
+    <section class="canvasCard" id="printArea">
+      <div class="hud no-print">
+        <div class="group">
+          <span class="label">Insert</span>
+          <button class="insert" data-insert="circle">O</button>
+          <button class="insert" data-insert="square">□</button>
+          <button class="insert" data-insert="triangle">△</button>
+          <button class="insert" data-insert="label">A</button>
+        </div>
+        <div class="group grow">
+          <span class="label">Search</span>
+          <input id="librarySearch" placeholder="Search play, formation, or tag">
+        </div>
+        <div id="hint" class="hint">Cursor tool selects and drags objects. Click A to choose a label. Cursor tool drags selected objects.</div>
       </div>
 
-      <section class="panel-section">
-        <div class="section-title">Tools</div>
-        <div class="tool-grid">
-          <button class="tool-btn active" data-tool="draw">Route Pen</button>
-          <button class="tool-btn" data-tool="erase">Eraser</button>
-          <button class="tool-btn" data-tool="select">Select</button>
-          <button class="tool-btn" data-tool="player">Player</button>
-          <button class="tool-btn" data-tool="ball">Ball</button>
-          <button class="tool-btn" data-tool="text">Text</button>
+      <div class="printHeader print-only">
+        <div id="printFormation" class="printLine">Formation</div>
+        <div id="printMotion" class="printLine small">Motion</div>
+        <div id="printPlay" class="printLine">Play</div>
+        <div id="printTags" class="printLine small">Tags</div>
+      </div>
+
+      <div class="surface" id="surface">
+        <div class="field">
+          <div class="boundary left"></div>
+          <div class="boundary right"></div>
+          <div class="los"></div>
+          <div class="hash left"></div>
+          <div class="hash right"></div>
+          <div class="lines"></div>
+          <div class="nums left"><span style="top:12%;">40</span><span style="top:34%;">50</span><span style="top:56%;">40</span></div>
+          <div class="nums right"><span style="top:12%;">40</span><span style="top:34%;">50</span><span style="top:56%;">40</span></div>
+        </div>
+        <svg id="svg" viewBox="0 0 1200 720" preserveAspectRatio="none"></svg>
+        <div id="objectLayer"></div>
+      </div>
+    </section>
+
+    <section class="lower">
+      <section class="card">
+        <div class="sectionHead">
+          <span>ASSIGNMENTS</span>
+          <div><label>Rows</label><select id="rowsSelect"><option>5</option><option>6</option><option>7</option><option>8</option><option>9</option><option selected>10</option><option>11</option><option>12</option></select></div>
+        </div>
+        <div id="assignmentRows" class="assignmentRows"></div>
+      </section>
+
+      <section class="card no-print">
+        <div class="sectionHead">
+          <span>TAGS</span>
+          <div class="tagActions"><input id="tagInput" placeholder="Add tag and press Enter"><button id="clearTagsBtn">Clear</button></div>
+        </div>
+        <div id="tagList" class="tagList"></div>
+        <div class="saved">
+          <div class="savedTitle">Saved matches</div>
+          <div id="searchResults" class="searchResults"></div>
         </div>
       </section>
+    </section>
+  </main>
+</div>
+<script src="script.js"></script>
 
-      <section class="panel-section">
-        <div class="section-title">Strokes</div>
-        <label class="control">
-          <span>Stroke Style</span>
-          <select id="strokeStyle">
-            <option value="solid">Solid</option>
-            <option value="dash">Dashed</option>
-            <option value="dot">Dotted</option>
-          </select>
-        </label>
-        <label class="control">
-          <span>Route Weight</span>
-          <input id="lineWidth" type="range" min="2" max="12" value="4" />
-        </label>
-        <label class="control toggle">
-          <span>Auto-smooth</span>
-          <input id="autoSmooth" type="checkbox" checked />
-        </label>
-        <label class="control toggle">
-          <span>Snap to grid</span>
-          <input id="snapToGrid" type="checkbox" />
-        </label>
-      </section>
-
-      <section class="panel-section">
-        <div class="section-title">Quick Actions</div>
-        <div class="stack-actions">
-          <button id="undoBtn">Undo</button>
-          <button id="redoBtn">Redo</button>
-          <button id="clearBtn" class="danger">Clear Board</button>
-        </div>
-      </section>
-    </aside>
-
-    <main class="workspace">
-      <header class="topbar">
-        <div>
-          <div class="topbar-label">Canvas</div>
-          <h2>Formation Board</h2>
-        </div>
-        <div class="topbar-actions">
-          <button id="toggleFieldBtn">Toggle Field</button>
-          <button id="downloadBtn">Export PNG</button>
-        </div>
-      </header>
-
-      <section class="canvas-wrap">
-        <canvas id="playCanvas" width="1400" height="850" aria-label="Football play drawing canvas"></canvas>
-      </section>
-    </main>
-
-    <aside class="sidebar right-panel">
-      <section class="panel-section">
-        <div class="section-title">Football Presets</div>
-        <div class="preset-grid">
-          <button class="preset-btn" data-preset="offense">Offense</button>
-          <button class="preset-btn" data-preset="defense">Defense</button>
-          <button class="preset-btn" data-preset="empty">Blank</button>
-        </div>
-      </section>
-
-      <section class="panel-section">
-        <div class="section-title">What makes this better</div>
-        <ul class="feature-list">
-          <li>Football-first icons and language</li>
-          <li>One-screen workflow with no clutter</li>
-          <li>Smooth route drawing for finger, mouse, or stylus</li>
-          <li>GitHub Pages friendly — no backend required</li>
-        </ul>
-      </section>
-
-      <section class="panel-section">
-        <div class="section-title">Roadmap</div>
-        <ol class="roadmap">
-          <li>Elite drawing engine</li>
-          <li>Drag-and-drop formations</li>
-          <li>Reusable route library</li>
-          <li>Call sheet and install builder</li>
-        </ol>
-      </section>
-    </aside>
+  <div id="labelModal" class="modal hidden no-print" aria-hidden="true">
+    <div class="modalCard">
+      <div class="modalTitle">Label Badge</div>
+      <div class="modalSub">Type the player tag or letter to place.</div>
+      <input id="labelModalInput" class="modalInput" maxlength="3" placeholder="X">
+      <div class="modalPresets">
+        <button class="preset" data-label-preset="X">X</button>
+        <button class="preset" data-label-preset="Z">Z</button>
+        <button class="preset" data-label-preset="H">H</button>
+        <button class="preset" data-label-preset="Y">Y</button>
+        <button class="preset" data-label-preset="F">F</button>
+        <button class="preset" data-label-preset="Q">Q</button>
+        <button class="preset" data-label-preset="R">R</button>
+        <button class="preset" data-label-preset="M">M</button>
+      </div>
+      <div class="modalActions">
+        <button id="labelModalCancel" class="modalBtn ghost">Cancel</button>
+        <button id="labelModalOk" class="modalBtn solid">Use Label</button>
+      </div>
+    </div>
   </div>
 
-  <script src="script.js"></script>
 </body>
 </html>
