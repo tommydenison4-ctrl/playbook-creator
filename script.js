@@ -21,6 +21,32 @@ const state = {
   suppressNextClick: false
 };
 
+let tabs = [];
+let activeTabId = null;
+
+function makeBlankPlayData(){
+  return {
+    formationName: '',
+    motionTag: '',
+    playName: '',
+    category: playCategoryEl ? playCategoryEl.value : 'Hard Run',
+    subfolder: '',
+    rowsCount: Number(rowsSelect?.value || 10),
+    assignments: [],
+    colors: {
+      route: '#111111',
+      motion: '#2952ff',
+      option: '#16a34a',
+      pull: '#dc2626',
+      block: '#111111',
+      text: '#7c3aed'
+    },
+    drawings: [],
+    objects: [],
+    tags: []
+  };
+}
+
 const surface = document.getElementById('surface');
 const svg = document.getElementById('svg');
 const objectLayer = document.getElementById('objectLayer');
@@ -29,6 +55,14 @@ const tagInput = document.getElementById('tagInput');
 const tagList = document.getElementById('tagList');
 const searchInput = document.getElementById('librarySearch');
 const searchResults = document.getElementById('searchResults');
+const libraryFilter = document.getElementById('libraryFilter');
+const libraryFoldersEl = document.getElementById('libraryFolders');
+const playCategoryEl = document.getElementById('playCategory');
+const playSubfolderEl = document.getElementById('playSubfolder');
+const tabsList = document.getElementById('tabsList');
+const newTabBtn = document.getElementById('newTabBtn');
+
+
 const hint = document.getElementById('hint');
 const labelModal = document.getElementById('labelModal');
 const labelModalInput = document.getElementById('labelModalInput');
@@ -116,6 +150,7 @@ document.getElementById('playName').addEventListener('input', ()=>{
 });
 
 function pushHistory(){
+  saveEditorIntoActiveTab(true);
   state.history.push(JSON.stringify({
     drawings: state.drawings,
     objects: state.objects,
@@ -363,7 +398,7 @@ function drawOne(defs, draw, preview=false){
   if(draw.mode === 'block'){
     const last = draw.points[draw.points.length-1], prev = draw.points[Math.max(draw.points.length-2,0)];
     const ang = Math.atan2(last.y-prev.y,last.x-prev.x);
-    const half = 14;
+    const half = 12;
     const px = Math.cos(ang + Math.PI/2) * half;
     const py = Math.sin(ang + Math.PI/2) * half;
     const cap = document.createElementNS('http://www.w3.org/2000/svg','path');
@@ -473,7 +508,7 @@ function renderSearchResults(query=''){
   matches.forEach(play => {
     const pill = document.createElement('div');
     pill.className = 'result';
-    pill.textContent = `${play.playName || 'Untitled'} • ${play.formationName || 'No formation'}`;
+    pill.textContent = `${play.playName || 'Untitled'} • ${(play.category || 'Pass Game')}`;
     pill.addEventListener('click', ()=>{
       applyData(play);
       document.getElementById('playStatus').textContent = 'Loaded';
@@ -514,7 +549,208 @@ function buildAssignments(){
 }
 function setAssignmentValues(items=[], countOverride=null){
   rowsSelect.value = String(countOverride || Math.max(items.length || 0, Number(rowsSelect.value) || 10));
-  buildAssignments();
+  
+function formatFolderCounts(folderName, plays){
+  return plays.filter(p => (p.category || 'Pass Game') === folderName).length;
+}
+
+function renderLibrary(){
+  if(!libraryFoldersEl) return;
+  const store = getStore();
+  const ui = getUIState();
+  const q = (libraryFilter?.value || '').trim().toLowerCase();
+  libraryFoldersEl.innerHTML = '';
+  const folders = store.folders || [];
+  folders.forEach(folder => {
+    const folderPlays = Object.values(store.plays || {}).filter(p => (p.category || 'Pass Game') === folder);
+    const filtered = folderPlays.filter(p => {
+      if(!q) return true;
+      const hay = [p.playName||'', p.formationName||'', p.subfolder||'', ...(p.tags||[])].join(' ').toLowerCase();
+      return hay.includes(q);
+    });
+    const grouped = {};
+    filtered.forEach(play => {
+      const sub = (play.subfolder || 'General').trim() || 'General';
+      grouped[sub] = grouped[sub] || [];
+      grouped[sub].push(play);
+    });
+
+    const card = document.createElement('div');
+    const isOpen = q ? true : !!(ui.openFolders && ui.openFolders[folder]);
+    card.className = 'folderCard' + (isOpen ? '' : ' collapsed');
+
+    const head = document.createElement('div');
+    head.className = 'folderHead';
+    head.innerHTML = `<div class="folderLeft"><div class="folderChevron">${isOpen ? '▾' : '▸'}</div><div><div class="folderName">${folder}</div><div class="folderMeta">${folderPlays.length} saved</div></div></div>`;
+    head.addEventListener('click', () => {
+      const current = getUIState();
+      current.openFolders = current.openFolders || {};
+      current.openFolders[folder] = !current.openFolders[folder];
+      setUIState(current);
+      renderLibrary();
+    });
+    card.appendChild(head);
+
+    const body = document.createElement('div');
+    body.className = 'folderBody';
+
+    const subfolders = Object.keys(grouped).sort();
+    if(subfolders.length === 0){
+      const empty = document.createElement('div');
+      empty.className = 'folderMeta';
+      empty.style.padding = '4px 6px';
+      empty.textContent = q ? 'No matches' : 'No saved plays yet';
+      body.appendChild(empty);
+    } else {
+      subfolders.forEach(sub => {
+        const block = document.createElement('div');
+        block.className = 'subfolderBlock';
+        const title = document.createElement('div');
+        title.className = 'subfolderTitle';
+        title.textContent = sub;
+        block.appendChild(title);
+
+        grouped[sub].forEach(play => {
+          const row = document.createElement('div');
+          row.className = 'playItem';
+          row.innerHTML = `<div class="playItemMain"><div class="playItemName">${play.playName || 'Untitled'}</div><div class="playItemMeta">${play.formationName || 'No formation'}${play.motionTag ? ' • ' + play.motionTag : ''}</div></div><div class="playItemActions"><button class="tinyBtn loadBtn">Load</button></div>`;
+          row.querySelector('.loadBtn').addEventListener('click', (e) => {
+            e.stopPropagation();
+            createTab(play, true);
+            document.getElementById('playStatus').textContent = 'Loaded';
+            setNotice(`Play loaded in new tab: ${play.playName || 'Untitled'}`);
+          });
+          row.addEventListener('click', () => {
+            createTab(play, true);
+            document.getElementById('playStatus').textContent = 'Loaded';
+            setNotice(`Play loaded in new tab: ${play.playName || 'Untitled'}`);
+          });
+          block.appendChild(row);
+        });
+
+        body.appendChild(block);
+      });
+    }
+
+    card.appendChild(body);
+    libraryFoldersEl.appendChild(card);
+  });
+
+  if(playCategoryEl){
+    const current = playCategoryEl.value;
+    playCategoryEl.innerHTML = '';
+    folders.forEach(folder => {
+      const opt = document.createElement('option');
+      opt.textContent = folder;
+      opt.value = folder;
+      playCategoryEl.appendChild(opt);
+    });
+    playCategoryEl.value = folders.includes(current) ? current : folders[0];
+  }
+}
+function applySidebarState(){
+  const ui = getUIState();
+  const main = document.querySelector('.withLibrary');
+  const btn = document.getElementById('sidebarToggle');
+  const fab = document.getElementById('sidebarShowFab');
+  if(main) main.classList.toggle('sidebarCollapsed', !!ui.sidebarCollapsed);
+  if(btn) btn.textContent = ui.sidebarCollapsed ? 'Show' : 'Hide';
+  if(fab) fab.style.display = ui.sidebarCollapsed ? 'inline-flex' : 'none';
+}
+
+document.getElementById('sidebarToggle')?.addEventListener('click', () => {
+  const ui = getUIState();
+  ui.sidebarCollapsed = !ui.sidebarCollapsed;
+  setUIState(ui);
+  applySidebarState();
+});
+
+document.getElementById('sidebarShowFab')?.addEventListener('click', () => {
+  const ui = getUIState();
+  ui.sidebarCollapsed = false;
+  setUIState(ui);
+  applySidebarState();
+});
+
+document.getElementById('addFolderBtn')?.addEventListener('click', () => {
+  const name = prompt('New folder name');
+  if(!name || !name.trim()) return;
+  const clean = name.trim();
+  const store = getStore();
+  if(!store.folders.includes(clean)){
+    store.folders.push(clean);
+    setStore(store);
+    renderLibrary();
+    setNotice(`Folder added: ${clean}`);
+  }
+});
+
+libraryFilter?.addEventListener('input', renderLibrary);
+
+
+function buildFieldMarks(){
+  const fieldLines = document.getElementById('fieldLines');
+  const leftHash = document.getElementById('leftHash');
+  const rightHash = document.getElementById('rightHash');
+  const leftNums = document.getElementById('leftNums');
+  const rightNums = document.getElementById('rightNums');
+  if(!fieldLines || !leftHash || !rightHash || !leftNums || !rightNums) return;
+
+  fieldLines.innerHTML = '';
+  leftHash.innerHTML = '';
+  rightHash.innerHTML = '';
+  leftNums.innerHTML = '';
+  rightNums.innerHTML = '';
+
+  // 7 visible major lines from top 40 to bottom 40
+  const linePercents = [7, 19.6667, 32.3333, 45, 57.6667, 70.3333, 83];
+  linePercents.forEach(p => {
+    const line = document.createElement('div');
+    line.className = 'fieldLine';
+    line.style.top = `${p}%`;
+    fieldLines.appendChild(line);
+  });
+
+  // hash marks every 5 yards between the major lines
+  const tickPercents = [];
+  const top = 7, bottom = 83;
+  const steps = 20; // 0..20 => every 5 yards across visible span
+  for(let i=0;i<=steps;i++){
+    tickPercents.push(top + ((bottom-top)/steps)*i);
+  }
+  tickPercents.forEach(p => {
+    const a = document.createElement('div');
+    a.className = 'tick';
+    a.style.top = `${p}%`;
+    leftHash.appendChild(a);
+    const b = document.createElement('div');
+    b.className = 'tick';
+    b.style.top = `${p}%`;
+    rightHash.appendChild(b);
+  });
+
+  // numbers straddling the major lines
+  const nums = [
+    {text:'40', top:19.6667},
+    {text:'50', top:45},
+    {text:'40', top:70.3333},
+  ];
+  nums.forEach(n => {
+    const l = document.createElement('span');
+    l.textContent = n.text;
+    l.style.top = `${n.top}%`;
+    l.style.left = '50%';
+    leftNums.appendChild(l);
+    const r = document.createElement('span');
+    r.textContent = n.text;
+    r.style.top = `${n.top}%`;
+    r.style.left = '50%';
+    rightNums.appendChild(r);
+  });
+}
+
+buildAssignments();
+buildFieldMarks();
   const rows = Array.from(document.querySelectorAll('#assignmentRows .assignment'));
   rows.forEach((row, i) => {
     const item = items[i] || {};
@@ -529,12 +765,27 @@ rowsSelect.addEventListener('change', buildAssignments);
 
 
 const STORAGE_KEY = 'pb_v50_store';
+const UI_KEY = 'pb_v52_ui';
+function getUIState(){
+  try{
+    return JSON.parse(localStorage.getItem(UI_KEY) || '{"sidebarCollapsed":false,"openFolders":{}}');
+  }catch(err){
+    return {sidebarCollapsed:false, openFolders:{}};
+  }
+}
+function setUIState(next){
+  localStorage.setItem(UI_KEY, JSON.stringify(next));
+}
 
 function getStore(){
   try{
-    return JSON.parse(localStorage.getItem(STORAGE_KEY) || '{"plays":{},"formations":{}}');
+    const parsed = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{"plays":{},"formations":{},"folders":["Hard Run","RPO","Screens","Quick Game","Play Action Pass","Pass Game","Custom"]}');
+    parsed.plays = parsed.plays || {};
+    parsed.formations = parsed.formations || {};
+    parsed.folders = parsed.folders || ["Hard Run","RPO","Screens","Quick Game","Play Action Pass","Pass Game","Custom"];
+    return parsed;
   }catch(err){
-    return {plays:{}, formations:{}};
+    return {plays:{}, formations:{}, folders:["Hard Run","RPO","Screens","Quick Game","Play Action Pass","Pass Game","Custom"]};
   }
 }
 function setStore(store){
@@ -545,11 +796,100 @@ function setNotice(msg){
   if(el) el.textContent = msg;
 }
 
+
+function currentEditorData(){
+  return {
+    formationName: document.getElementById('formationName').value || '',
+    motionTag: document.getElementById('motionTag').value || '',
+    playName: document.getElementById('playName').value || '',
+    category: playCategoryEl ? playCategoryEl.value : 'Hard Run',
+    subfolder: playSubfolderEl ? playSubfolderEl.value : '',
+    rowsCount: Number(rowsSelect.value),
+    assignments: getAssignmentValues(),
+    colors: colors(),
+    drawings: state.drawings,
+    objects: state.objects,
+    tags: state.tags
+  };
+}
+function saveEditorIntoActiveTab(markDirty=true){
+  const tab = tabs.find(t => t.id === activeTabId);
+  if(!tab) return;
+  tab.data = currentEditorData();
+  if(markDirty) tab.dirty = true;
+  renderTabs();
+}
+function switchToTab(id){
+  saveEditorIntoActiveTab(false);
+  const tab = tabs.find(t => t.id === id);
+  if(!tab) return;
+  activeTabId = id;
+  applyData(tab.data || makeBlankPlayData());
+  renderTabs();
+}
+function createTab(data=null, activate=true){
+  const id = makeId();
+  const baseData = data ? JSON.parse(JSON.stringify(data)) : makeBlankPlayData();
+  tabs.push({
+    id,
+    title: baseData.playName || baseData.formationName || 'Untitled',
+    data: baseData,
+    dirty: false
+  });
+  if(activate){
+    activeTabId = id;
+    applyData(baseData);
+  }
+  renderTabs();
+  return id;
+}
+function closeTab(id){
+  const idx = tabs.findIndex(t => t.id === id);
+  if(idx === -1) return;
+  const wasActive = activeTabId === id;
+  tabs.splice(idx, 1);
+  if(!tabs.length){
+    createTab(makeBlankPlayData(), true);
+    return;
+  }
+  if(wasActive){
+    const next = tabs[Math.max(0, idx-1)] || tabs[0];
+    activeTabId = next.id;
+    applyData(next.data);
+  }
+  renderTabs();
+}
+function renderTabs(){
+  if(!tabsList) return;
+  const activeData = currentEditorData();
+  const activeTab = tabs.find(t => t.id === activeTabId);
+  if(activeTab){
+    activeTab.data = activeData;
+    activeTab.title = activeData.playName || activeData.formationName || 'Untitled';
+  }
+  tabsList.innerHTML = '';
+  tabs.forEach(tab => {
+    const btn = document.createElement('div');
+    btn.className = 'playTab' + (tab.id === activeTabId ? ' active' : '') + (tab.dirty ? ' dirty' : '');
+    btn.innerHTML = `<span class="playTabDot"></span><span class="playTabName">${tab.title || 'Untitled'}</span><button class="playTabClose" title="Close">×</button>`;
+    btn.addEventListener('click', (e) => {
+      if(e.target.closest('.playTabClose')) return;
+      switchToTab(tab.id);
+    });
+    btn.querySelector('.playTabClose').addEventListener('click', (e) => {
+      e.stopPropagation();
+      closeTab(tab.id);
+    });
+    tabsList.appendChild(btn);
+  });
+}
 function payload(){
   return {
     formationName: document.getElementById('formationName').value || '',
     motionTag: document.getElementById('motionTag').value || '',
     playName: document.getElementById('playName').value || '',
+    category: playCategoryEl ? playCategoryEl.value : 'Pass Game',
+    subfolder: playSubfolderEl ? playSubfolderEl.value : '',
     rowsCount: Number(rowsSelect.value),
     assignments: getAssignmentValues(),
     colors: colors(),
@@ -569,6 +909,8 @@ function saveFormation(){
   store.formations[name.toLowerCase()] = { ...payload(), playName: '' };
   setStore(store);
   document.getElementById('formationStatus').textContent = 'Saved';
+  const tab = tabs.find(t => t.id === activeTabId); if(tab){ tab.dirty = false; tab.title = currentEditorData().playName || currentEditorData().formationName || 'Untitled'; }
+  renderLibrary(); renderTabs();
   setNotice(`Formation saved: ${name}`);
   return true;
 }
@@ -582,7 +924,9 @@ function savePlay(){
   store.plays[name.toLowerCase()] = payload();
   setStore(store);
   document.getElementById('playStatus').textContent = 'Saved';
+  const tab = tabs.find(t => t.id === activeTabId); if(tab){ tab.dirty = false; tab.title = currentEditorData().playName || currentEditorData().formationName || 'Untitled'; }
   renderSearchResults(searchInput.value);
+  renderLibrary(); renderTabs();
   setNotice(`Play saved: ${name}`);
   return true;
 }
@@ -590,6 +934,8 @@ function applyData(data){
   document.getElementById('formationName').value = data.formationName || '';
   document.getElementById('motionTag').value = data.motionTag || '';
   document.getElementById('playName').value = data.playName || '';
+  if(playCategoryEl) playCategoryEl.value = data.category || 'Pass Game';
+  if(playSubfolderEl) playSubfolderEl.value = data.subfolder || '';
   if(data.colors){
     document.getElementById('routeColor').value = data.colors.route || '#111111';
     document.getElementById('motionColor').value = data.colors.motion || '#2952ff';
@@ -616,6 +962,7 @@ function applyData(data){
   state.draggingAnchor = null;
   clearPendingInsert();
   render();
+  renderTabs();
 }
 function loadSaved(){
   const playName = (document.getElementById('playName').value || '').trim().toLowerCase();
@@ -974,9 +1321,223 @@ document.getElementById('deleteBtn').addEventListener('click', () => {
   render();
 });
 
+
+function formatFolderCounts(folderName, plays){
+  return plays.filter(p => (p.category || 'Pass Game') === folderName).length;
+}
+
+function renderLibrary(){
+  if(!libraryFoldersEl) return;
+  const store = getStore();
+  const q = (libraryFilter?.value || '').trim().toLowerCase();
+  libraryFoldersEl.innerHTML = '';
+  const folders = store.folders || [];
+  folders.forEach(folder => {
+    const folderPlays = Object.values(store.plays || {}).filter(p => (p.category || 'Pass Game') === folder);
+    const filtered = folderPlays.filter(p => {
+      if(!q) return true;
+      const hay = [p.playName||'', p.formationName||'', p.subfolder||'', ...(p.tags||[])].join(' ').toLowerCase();
+      return hay.includes(q);
+    });
+    const grouped = {};
+    filtered.forEach(play => {
+      const sub = (play.subfolder || 'General').trim() || 'General';
+      grouped[sub] = grouped[sub] || [];
+      grouped[sub].push(play);
+    });
+
+    const card = document.createElement('div');
+    card.className = 'folderCard';
+    const head = document.createElement('div');
+    head.className = 'folderHead';
+    head.innerHTML = `<div><div class="folderName">${folder}</div><div class="folderMeta">${folderPlays.length} saved</div></div>`;
+    card.appendChild(head);
+
+    const body = document.createElement('div');
+    body.className = 'folderBody';
+
+    const subfolders = Object.keys(grouped).sort();
+    if(subfolders.length === 0){
+      const empty = document.createElement('div');
+      empty.className = 'folderMeta';
+      empty.style.padding = '4px 6px';
+      empty.textContent = q ? 'No matches' : 'No saved plays yet';
+      body.appendChild(empty);
+    } else {
+      subfolders.forEach(sub => {
+        const block = document.createElement('div');
+        block.className = 'subfolderBlock';
+        const title = document.createElement('div');
+        title.className = 'subfolderTitle';
+        title.textContent = sub;
+        block.appendChild(title);
+
+        grouped[sub].forEach(play => {
+          const row = document.createElement('div');
+          row.className = 'playItem';
+          row.innerHTML = `<div class="playItemMain"><div class="playItemName">${play.playName || 'Untitled'}</div><div class="playItemMeta">${play.formationName || 'No formation'}${play.motionTag ? ' • ' + play.motionTag : ''}</div></div>
+          <div class="playItemActions"><button class="tinyBtn loadBtn">Load</button></div>`;
+          row.querySelector('.loadBtn').addEventListener('click', (e) => {
+            e.stopPropagation();
+            createTab(play, true);
+            document.getElementById('playStatus').textContent = 'Loaded';
+            setNotice(`Play loaded in new tab: ${play.playName || 'Untitled'}`);
+          });
+          row.addEventListener('click', () => {
+            createTab(play, true);
+            document.getElementById('playStatus').textContent = 'Loaded';
+            setNotice(`Play loaded in new tab: ${play.playName || 'Untitled'}`);
+          });
+          block.appendChild(row);
+        });
+
+        body.appendChild(block);
+      });
+    }
+
+    card.appendChild(body);
+    libraryFoldersEl.appendChild(card);
+  });
+
+  if(playCategoryEl){
+    const current = playCategoryEl.value;
+    playCategoryEl.innerHTML = '';
+    folders.forEach(folder => {
+      const opt = document.createElement('option');
+      opt.textContent = folder;
+      opt.value = folder;
+      playCategoryEl.appendChild(opt);
+    });
+    playCategoryEl.value = folders.includes(current) ? current : folders[0];
+  }
+}
+
+function applySidebarState(){
+  const ui = getUIState();
+  const main = document.querySelector('.withLibrary');
+  const btn = document.getElementById('sidebarToggle');
+  const fab = document.getElementById('sidebarShowFab');
+  if(main) main.classList.toggle('sidebarCollapsed', !!ui.sidebarCollapsed);
+  if(btn) btn.textContent = ui.sidebarCollapsed ? 'Show' : 'Hide';
+  if(fab) fab.style.display = ui.sidebarCollapsed ? 'inline-flex' : 'none';
+}
+
+document.getElementById('sidebarToggle')?.addEventListener('click', () => {
+  const ui = getUIState();
+  ui.sidebarCollapsed = !ui.sidebarCollapsed;
+  setUIState(ui);
+  applySidebarState();
+});
+
+document.getElementById('sidebarShowFab')?.addEventListener('click', () => {
+  const ui = getUIState();
+  ui.sidebarCollapsed = false;
+  setUIState(ui);
+  applySidebarState();
+});
+
+document.getElementById('addFolderBtn')?.addEventListener('click', () => {
+  const name = prompt('New folder name');
+  if(!name || !name.trim()) return;
+  const clean = name.trim();
+  const store = getStore();
+  if(!store.folders.includes(clean)){
+    store.folders.push(clean);
+    setStore(store);
+    renderLibrary();
+    setNotice(`Folder added: ${clean}`);
+  }
+});
+
+libraryFilter?.addEventListener('input', renderLibrary);
+
+
+function buildFieldMarks(){
+  const fieldLines = document.getElementById('fieldLines');
+  const leftHash = document.getElementById('leftHash');
+  const rightHash = document.getElementById('rightHash');
+  const leftNums = document.getElementById('leftNums');
+  const rightNums = document.getElementById('rightNums');
+  if(!fieldLines || !leftHash || !rightHash || !leftNums || !rightNums) return;
+
+  fieldLines.innerHTML = '';
+  leftHash.innerHTML = '';
+  rightHash.innerHTML = '';
+  leftNums.innerHTML = '';
+  rightNums.innerHTML = '';
+
+  // 7 visible major lines from top 40 to bottom 40
+  const linePercents = [7, 19.6667, 32.3333, 45, 57.6667, 70.3333, 83];
+  linePercents.forEach(p => {
+    const line = document.createElement('div');
+    line.className = 'fieldLine';
+    line.style.top = `${p}%`;
+    fieldLines.appendChild(line);
+  });
+
+  // hash marks every 5 yards between the major lines
+  const tickPercents = [];
+  const top = 7, bottom = 83;
+  const steps = 20; // 0..20 => every 5 yards across visible span
+  for(let i=0;i<=steps;i++){
+    tickPercents.push(top + ((bottom-top)/steps)*i);
+  }
+  tickPercents.forEach(p => {
+    const a = document.createElement('div');
+    a.className = 'tick';
+    a.style.top = `${p}%`;
+    leftHash.appendChild(a);
+    const b = document.createElement('div');
+    b.className = 'tick';
+    b.style.top = `${p}%`;
+    rightHash.appendChild(b);
+  });
+
+  // numbers straddling the major lines
+  const nums = [
+    {text:'40', top:19.6667},
+    {text:'50', top:45},
+    {text:'40', top:70.3333},
+  ];
+  nums.forEach(n => {
+    const l = document.createElement('span');
+    l.textContent = n.text;
+    l.style.top = `${n.top}%`;
+    l.style.left = '50%';
+    leftNums.appendChild(l);
+    const r = document.createElement('span');
+    r.textContent = n.text;
+    r.style.top = `${n.top}%`;
+    r.style.left = '50%';
+    rightNums.appendChild(r);
+  });
+}
+
 buildAssignments();
 render();
 syncPrintLabels();
 renderSearchResults('');
+renderLibrary();
+applySidebarState();
+bindDirtyTracking();
+newTabBtn?.addEventListener('click', () => {
+  saveEditorIntoActiveTab(false);
+  createTab(makeBlankPlayData(), true);
+  setNotice('New tab created');
+});
+createTab(makeBlankPlayData(), true);
 setNotice('Ready');
+
+function bindDirtyTracking(){
+  ['formationName','motionTag','playName','playSubfolder','playCategory'].forEach(id => {
+    const el = document.getElementById(id);
+    if(el){
+      el.addEventListener('input', () => { saveEditorIntoActiveTab(true); });
+      el.addEventListener('change', () => { saveEditorIntoActiveTab(true); });
+    }
+  });
+  rowsSelect?.addEventListener('change', () => { saveEditorIntoActiveTab(true); });
+  tagInput?.addEventListener('input', () => { saveEditorIntoActiveTab(true); });
+}
+
 window.addEventListener('beforeprint', syncPrintLabels);

@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Playbook Creator V50</title>
+  <title>Playbook Creator V66</title>
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
@@ -12,8 +12,8 @@
     <div class="brand">
       <div class="badge">PB</div>
       <div>
-        <div class="title">Playbook Creator V50</div>
-        <div class="subtitle">Save/load rebuilt and visible.</div>
+        <div class="title">Playbook Creator V66</div>
+        <div class="subtitle">Cleaner library header.</div>
       </div>
     </div>
 
@@ -21,51 +21,61 @@
       <div class="row"><label>Formation</label><input id="formationName" placeholder="Formation name"><span id="formationStatus" class="pill">New</span></div>
       <div class="row"><label>Motion</label><input id="motionTag" placeholder="Motion tag"></div>
       <div class="row"><label>Play</label><input id="playName" placeholder="Play name"><span id="playStatus" class="pill">New</span></div>
+      <div class="row"><label>Folder</label><select id="playCategory">
+        <option>Hard Run</option>
+        <option>RPO</option>
+        <option>Screens</option>
+        <option>Quick Game</option>
+        <option>Play Action Pass</option>
+        <option>Pass Game</option>
+        <option>Custom</option>
+      </select><input id="playSubfolder" placeholder="Subfolder / set / install week"></div>
     </div>
 
-    <div class="actions">
-      <div class="toolrow toolrow-grid">
-        <div class="toolpair">
-          <button class="tool active" data-tool="route" title="Straight route">↗</button>
-          <label class="color"><input id="routeColor" type="color" value="#111111"></label>
-        </div>
-        <div class="toolpair">
-          <button class="tool" data-tool="motion" title="Motion">≈</button>
-          <label class="color"><input id="motionColor" type="color" value="#2952ff"></label>
-        </div>
-        <div class="toolpair">
-          <button class="tool" data-tool="option" title="Option">⤴</button>
-          <label class="color"><input id="optionColor" type="color" value="#16a34a"></label>
-        </div>
-        <div class="toolpair">
-          <button class="tool" data-tool="pull" title="Pull">⇢</button>
-          <label class="color"><input id="pullColor" type="color" value="#dc2626"></label>
-        </div>
-        <div class="toolpair">
-          <button class="tool" data-tool="block" title="Block">╱</button>
-          <label class="color"><input id="blockColor" type="color" value="#111111"></label>
-        </div>
-        <div class="toolpair">
-          <button class="tool" data-tool="text" title="Text">T</button>
-          <label class="color"><input id="textColor" type="color" value="#7c3aed"></label>
+    <div class="actions premiumActions">
+      <div class="toolGroup toolPalette">
+        <div class="toolrow toolrow-grid">
+          <div class="toolpair"><button class="tool active" data-tool="route" title="Straight route">↗</button><label class="color"><input id="routeColor" type="color" value="#111111"></label></div>
+          <div class="toolpair"><button class="tool" data-tool="motion" title="Motion">≈</button><label class="color"><input id="motionColor" type="color" value="#2952ff"></label></div>
+          <div class="toolpair"><button class="tool" data-tool="option" title="Option">⤴</button><label class="color"><input id="optionColor" type="color" value="#16a34a"></label></div>
+          <div class="toolpair"><button class="tool" data-tool="pull" title="Pull">⇢</button><label class="color"><input id="pullColor" type="color" value="#dc2626"></label></div>
+          <div class="toolpair"><button class="tool" data-tool="block" title="Block">⊣</button><label class="color"><input id="blockColor" type="color" value="#111111"></label></div>
+          <div class="toolpair"><button class="tool" data-tool="text" title="Text">T</button><label class="color"><input id="textColor" type="color" value="#7c3aed"></label></div>
         </div>
       </div>
-      <div class="toolrow">
-        <button class="tool" data-tool="cursor" title="Cursor / Drag">↖</button>
-        <button class="tool" data-tool="anchors" title="Edit route anchors">✎</button>
-        <button class="mode active" id="hybridBtn">Hybrid</button>
-        <button class="mode" id="freehandBtn">Freehand</button>
-        <button class="small" id="saveFormationBtn">F</button>
-        <button class="small" id="savePlayBtn">P</button>
-        <button class="small" id="loadBtn">L</button>
-        <button class="small" id="pdfBtn">PDF</button>
-        <button class="small" id="undoBtn">↺</button>
-        <button class="small danger" id="deleteBtn">⌫</button>
+      <div class="toolGroup utilityGroup">
+        <div class="toolrow">
+          <button class="tool" data-tool="cursor" title="Cursor / Drag">✋</button>
+          <button class="tool" data-tool="anchors" title="Edit route anchors">✎</button>
+          <button class="mode active" id="hybridBtn">Hybrid</button>
+          <button class="mode" id="freehandBtn">Freehand</button>
+          <button class="small" id="saveFormationBtn">F</button>
+          <button class="small" id="savePlayBtn">P</button>
+          <button class="small" id="loadBtn">L</button>
+          <button class="small" id="pdfBtn">PDF</button>
+          <button class="small" id="undoBtn">↺</button>
+          <button class="small danger" id="deleteBtn">⌫</button>
+        </div>
       </div>
     </div>
   </header>
 
-  <main class="main">
+  <button id="sidebarShowFab" class="sidebarShowFab no-print">Show Library</button>
+  <main class="main withLibrary">
+    <aside class="libraryPanel no-print">
+      <div class="libraryHead"><button id="sidebarToggle" class="small">Hide</button>
+        <div>
+          <div class="libraryTitle">Playbook Library</div>
+          
+        </div>
+        <button id="addFolderBtn" class="libraryAddBtn" title="Add folder"><span class="plus">＋</span><span class="labelTxt">New Folder</span></button>
+      </div>
+      <div class="librarySearchWrap">
+        <input id="libraryFilter" placeholder="Search saved plays">
+      </div>
+      <div id="libraryFolders" class="libraryFolders"></div>
+    </aside>
+    <div class="mainContent">
     <section class="canvasCard" id="printArea">
       <div class="hud no-print">
         <div class="group">
@@ -126,6 +136,13 @@
         </div>
       </section>
     </section>
+  
+    <div class="tabsBar no-print">
+      <div id="tabsList" class="tabsList"></div>
+      <button id="newTabBtn" class="small">+ Tab</button>
+    </div>
+
+    </div>
   </main>
 </div>
 <script src="script.js"></script>
